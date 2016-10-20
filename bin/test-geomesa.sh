@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 
 # you needito set these and put the dist and tools in /tmp and have cloudlocal at the path below
-GMVER="1.2.6-SNAPSHOT"
-VER_SHORT="126"   # TODO make this read from ${GMVER}
-TEST_CL_PATH="${HOME}/dev/cloud-local"
+GMVER="1.3.0-m1"
+VER_SHORT="130m1"   # TODO make this read from ${GMVER}
+#TEST_CL_PATH="${HOME}/dev/cloud-local"
+TEST_CL_PATH=/opt/devel/src/cloud-local
+SCALAVER="2.11"
 
 # Twitter data
 TWITTER_FILE=/fill/me/in
 
 # gm stuff
-GM="/tmp/geomesa-tools-${GMVER}"
-GM_DIST="/tmp/geomesa-${GMVER}"
+GM="/tmp/geomesa-accumulo_${SCALAVER}-${GMVER}"
 GMTMP="geomesa-test-tmp"
 geomesa="$GM/bin/geomesa"
-export GEOMESA_HOME=${GM}
+export GEOMESA_ACCUMULO_HOME=${GM}
 
 . "${TEST_CL_PATH}/bin/config.sh"
 
@@ -26,22 +27,25 @@ function accrun() {
 
 
 function setup()  {
+	set -x
     echo "Placing iter in hdfs" && \
     itrdir="/geomesa/iter/${NS}" && \
-    itrfile="geomesa-accumulo-distributed-runtime-${GMVER}.jar" && \
+    itrfile="geomesa-accumulo-distributed-runtime_${SCALAVER}-${GMVER}.jar" && \
     (hadoop fs -test -d $itrdir && hadoop fs -rm -r $itrdir); \
     hadoop fs -mkdir -p $itrdir && \
-    hadoop fs -put ${GM_DIST}/dist/accumulo/${itrfile} ${itrdir}/${itrfile} && \
+    hadoop fs -put ${GM}/dist/accumulo/${itrfile} ${itrdir}/${itrfile} && \
     
     echo "configuring namespaces" && \
     (test "$(accrun "namespaces" | grep $NS | wc -l)" == "1" && accrun "deletenamespace ${NS} -f"); \
     accrun "createnamespace ${NS}" && \
-    (test "$(accrun "config" | grep "general.vfs.context.classpath.${NS}" | wc -l)" == "1" && accrun "config -d general.vfs.context.classpath.${NS}"); \
+    (test "$(accrun "config -np" | grep "general.vfs.context.classpath.${NS}" | wc -l)" == "1" && accrun "config -d general.vfs.context.classpath.${NS}"); \
     accrun "config -s general.vfs.context.classpath.${NS}=hdfs://localhost:9000${itrdir}/${itrfile}" && \
     accrun "config -ns ${NS} -s table.classpath.context=${NS}"
+	set +x
 }
 
 function test_local() {
+	set -x
     $geomesa ingest -u root -p secret -c ${CATALOG} -s example-csv  -C example-csv                                      $GM/examples/ingest/csv/example.csv
     $geomesa ingest -u root -p secret -c ${CATALOG} -s example-json -C example-json                                     $GM/examples/ingest/json/example.json
     $geomesa ingest -u root -p secret -c ${CATALOG} -s example-json -C $GM/examples/ingest/json/example_multi_line.conf $GM/examples/ingest/json/example_multi_line.json
@@ -49,11 +53,12 @@ function test_local() {
     $geomesa ingest -u root -p secret -c ${CATALOG} -s example-xml  -C example-xml-multi                                $GM/examples/ingest/xml/example_multi_line.xml
     $geomesa ingest -u root -p secret -c ${CATALOG} -s example-avro -C example-avro-no-header                           $GM/examples/ingest/avro/example_no_header.avro
     #$geomesa ingest -u root -p secret -c ${CATALOG} -s example-avro -C example-avro-header                             $GM/examples/ingest/avro/with_header.avro
+	set +x
 }
 
 
 function test_hdfs() {
-
+	set -x
     hadoop fs -ls /user/$(whoami)
     
     hadoop fs -put $GM/examples/ingest/csv/example.csv
@@ -71,14 +76,17 @@ function test_hdfs() {
     $geomesa ingest -u root -p secret -c ${CATALOG} -s example-xml  -C example-xml-multi                                hdfs://localhost:9000/user/$(whoami)/example_multi_line.xml
     $geomesa ingest -u root -p secret -c ${CATALOG} -s example-avro -C example-avro-no-header                           hdfs://localhost:9000/user/$(whoami)/example_no_header.avro
     #$geomesa ingest -u root -p secret -c ${CATALOG} -s example-avro -C example-avro-header                             hdfs://localhost:9000/user/$(whoami)/with_header.avro
+	set +x
 }
 
 function test_s3() {
+	set -x
     # uses gmdata jar in tools lib
     # s3n
     $geomesa ingest -u root -p secret -c ${CATALOG} -s geolife -C geolife s3n://ahulbert-test/geolife/Data/000/Trajectory/20081023025304.plt s3n://ahulbert-test/geolife/Data/000/Trajectory/20081024020959.plt
     # s3a
     $geomesa ingest -u root -p secret -c ${CATALOG} -s geolife -C geolife s3a://ahulbert-test/geolife/Data/000/Trajectory/20081023025304.plt s3a://ahulbert-test/geolife/Data/000/Trajectory/20081024020959.plt
+	set +x
 }
 
 function differ() {
@@ -194,13 +202,13 @@ echo "testing vis" && \
 test_vis && \
 echo && \
 
-echo "testing s3" && \
-test_s3 && \
-echo && \
+#echo "testing s3" && \
+#test_s3 && \
+#echo && \
 
-echo "Testing twitter schema" && \
-test_twitter && \
-echo "PASSED - Twitter tests"
+#echo "Testing twitter schema" && \
+#test_twitter && \
+#echo "PASSED - Twitter tests"
 
 if [[ "$?" == "0" ]]; then
   echo "ALL TESTS PASSED";
