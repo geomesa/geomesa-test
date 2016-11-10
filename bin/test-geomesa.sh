@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # you needito set these and put the dist and tools in /tmp and have cloudlocal at the path below
-GMVER="1.3.0-m2-SNAPSHOT"
-VER_SHORT="130m2"   # TODO make this read from ${GMVER}
+GMVER="1.3.0-m3-SNAPSHOT"
+VER_SHORT="130m3"   # TODO make this read from ${GMVER}
 TEST_CL_PATH="${HOME}/dev/cloud-local"
 SCALAVER="2.11"
 
