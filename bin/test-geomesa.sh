@@ -2,7 +2,7 @@
 
 # you need to set these and put the dist and tools in /tmp and have cloudlocal at the path below
 GMVER="1.3.0-m3-SNAPSHOT"
-VER_SHORT="130m3"   # TODO make this read from ${GMVER}
+VER_SHORT="$(echo $GMVER | sed 's/[\.\-]\|SNAPSHOT//g')" #"130m3"
 TEST_CL_PATH="${HOME}/dev/cloud-local"
 SCALAVER="2.11"
 
